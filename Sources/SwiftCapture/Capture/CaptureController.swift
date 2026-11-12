@@ -190,6 +190,7 @@ class CaptureController {
     ) async throws -> SCStream {
         
         // 🔧 修复：对于应用录制，先将应用置于前台
+        // Exact-window mode (.window) never reaches this branch: --activation preserve means no raise, no focus.
         if config.recordingMode == .application, let targetApp = config.targetApplication {
             do {
                 let appManager = ApplicationManager()
@@ -333,7 +334,9 @@ class CaptureController {
             content: content
         )
         
-        streamConfig.sourceRect = sourceRect
+        if config.recordingMode != .window {
+            streamConfig.sourceRect = sourceRect
+        }
         streamConfig.width = Int(outputSize.width)
         streamConfig.height = Int(outputSize.height)
         
@@ -363,8 +366,17 @@ class CaptureController {
             streamConfig.scalesToFit = false
         }
         
-        // Configure color space and quality
-        streamConfig.colorSpaceName = CGColorSpace.displayP3
+        if config.recordingMode == .window {
+            streamConfig.scalesToFit = false
+            if #available(macOS 14.0, *) {
+                streamConfig.preservesAspectRatio = true
+                streamConfig.captureResolution = .best
+                streamConfig.ignoreShadowsSingleWindow = true // frame == window, no drop shadow padding
+            }
+        }
+        
+        // Configure color space and quality: Rec.709 frames (matches the Rec.709 tags written by the encoder)
+        streamConfig.colorSpaceName = CGColorSpace.itur_709
         streamConfig.backgroundColor = CGColor.clear
         
         // Configure advanced settings for macOS 14+
@@ -455,6 +467,12 @@ class CaptureController {
         }
         
         switch config.recordingMode {
+        case .window:
+            guard let target = config.windowTarget else {
+                throw CaptureError.configurationError("No target window specified")
+            }
+            let window = try WindowResolver.resolve(target, in: content)
+            return SCContentFilter(desktopIndependentWindow: window)
         case .screen:
             // Screen recording mode
             let targetDisplay: SCDisplay
@@ -546,6 +564,9 @@ class CaptureController {
             return try calculateScreenRecordingDimensions(config: config, content: content)
         case .application:
             return try calculateApplicationRecordingDimensions(config: config, content: content)
+        case .window:
+            // Whole window; ScreenCaptureKit uses the full window area when sourceRect is left empty
+            return (sourceRect: CGRect.zero, outputSize: config.videoSettings.resolution)
         }
     }
     

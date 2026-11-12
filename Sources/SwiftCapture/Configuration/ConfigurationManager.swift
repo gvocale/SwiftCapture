@@ -53,7 +53,10 @@ class ConfigurationManager {
         // Get screen information
         let displayManager = DisplayManager()
         let targetScreen: ScreenInfo?
-        if command.app == nil {
+        if command.windowID != nil {
+            // Exact-window mode - the window decides the size; no screen needed
+            targetScreen = nil
+        } else if command.app == nil {
             // Screen recording mode - get the specified screen
             try validator.validateScreen(command.screen)
             targetScreen = try displayManager.getScreen(at: command.screen)
@@ -130,7 +133,10 @@ class ConfigurationManager {
             audioSettings: audioSettings,
             videoSettings: finalVideoSettings,
             countdown: command.countdown,
-            verbose: command.verbose
+            verbose: command.verbose,
+            windowTarget: command.windowID.map {
+                WindowTarget(windowID: CGWindowID($0), expectedBundleID: command.expectBundleID)
+            }
         )
         
         return configuration
@@ -297,7 +303,8 @@ class ConfigurationManager {
             audioSettings: configuration.audioSettings,
             videoSettings: updatedVideoSettings,
             countdown: configuration.countdown,
-            verbose: configuration.verbose
+            verbose: configuration.verbose,
+            windowTarget: configuration.windowTarget
         )
     }
 }

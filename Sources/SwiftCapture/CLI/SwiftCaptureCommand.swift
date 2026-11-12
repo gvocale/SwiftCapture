@@ -11,7 +11,7 @@ struct SwiftCaptureCommand: AsyncParsableCommand {
         commandName: "scap",
         abstract: "Professional screen recording tool for macOS using ScreenCaptureKit",
         discussion: HelpFormatter.usageExamples,
-        version: "2.2.0",
+        version: "2.3.0-exact-window",
         helpNames: [.short, .long, .customLong("help")]
     )
     
@@ -53,6 +53,16 @@ struct SwiftCaptureCommand: AsyncParsableCommand {
     
     @Option(name: [.customShort("A"), .long], help: "Application name to record (instead of screen)")
     var app: String?
+    
+    // MARK: - Exact Window Recording
+    @Option(name: [.customLong("window-id")], help: "Core Graphics window ID of the single window to record (exact-window capture; conflicts with --app/--area/--screen)")
+    var windowID: Int?
+    
+    @Option(name: [.customLong("expect-bundle-id")], help: "Refuse to record unless the --window-id window is owned by this bundle identifier (e.g. com.google.Chrome)")
+    var expectBundleID: String?
+    
+    @Option(name: [.customLong("activation")], help: "Activation policy: 'preserve' never raises or focuses the target app (default); 'raise' brings --app to the front")
+    var activation: String?
     
     // MARK: - Audio Options
     @Flag(name: [.short, .long], help: "Enable microphone recording")
@@ -114,6 +124,11 @@ struct SwiftCaptureCommand: AsyncParsableCommand {
         try validateScreen()
         try validateCountdown()
         try validateArea()
+        if let message = WindowTargetRules.validateOptions(
+            windowID: windowID, expectBundleID: expectBundleID, activation: activation,
+            app: app, areaGiven: area != nil, screen: screen) {
+            throw ValidationError(message)
+        }
         
         // Validate argument combinations and conflicts
         try validateArgumentCombinations()

@@ -69,6 +69,14 @@ struct VideoSettings {
     /// Recording resolution
     let resolution: CGSize
     
+    /// Rec.709 colour tags written to the encoder (primaries, transfer, matrix).
+    /// Frames are requested as Rec.709 from ScreenCaptureKit, so the tags match the pixels.
+    static let rec709ColorProperties: [String: String] = [
+        AVVideoColorPrimariesKey: AVVideoColorPrimaries_ITU_R_709_2,
+        AVVideoTransferFunctionKey: AVVideoTransferFunction_ITU_R_709_2,
+        AVVideoYCbCrMatrixKey: AVVideoYCbCrMatrix_ITU_R_709_2
+    ]
+    
     /// Calculate appropriate bitrate based on resolution, quality, and fps
     var bitRate: Int {
         let pixelCount = Int(resolution.width * resolution.height)
@@ -143,6 +151,7 @@ struct VideoSettings {
             AVVideoCodecKey: codec,
             AVVideoWidthKey: Int(resolution.width),
             AVVideoHeightKey: Int(resolution.height),
+            AVVideoColorPropertiesKey: VideoSettings.rec709ColorProperties,
             AVVideoCompressionPropertiesKey: compressionProperties
         ]
     }
@@ -224,11 +233,9 @@ extension VideoSettings {
         switch format {
         case .mov:
             // For MOV, we can use HEVC for high quality/resolution to save space
-            if quality == .high && pixelCount > 1920 * 1080 {
-                return .hevc // Better compression for high-res content
-            } else {
-                return .h264 // Standard choice for compatibility
-            }
+            // Always H.264: Rec.709 tagging and player compatibility matter more than size
+            _ = pixelCount
+            return .h264
         case .mp4:
             // Legacy case - should not be used since format is fixed to MOV
             return .h264

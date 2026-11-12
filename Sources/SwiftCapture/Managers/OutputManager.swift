@@ -173,11 +173,9 @@ class OutputManager {
         switch format {
         case .mov:
             // For MOV, we can use HEVC for high quality/resolution to save space
-            if quality == .high && pixelCount > 1920 * 1080 {
-                return .hevc // Better compression for high-res content
-            } else {
-                return .h264 // Standard choice for compatibility
-            }
+            // Always H.264: Rec.709 tagging and player compatibility matter more than size
+            _ = pixelCount
+            return .h264
         case .mp4:
             // Legacy case - should not be used since format is fixed to MOV
             return .h264

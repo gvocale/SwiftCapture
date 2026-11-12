@@ -112,8 +112,14 @@ struct RecordingConfiguration {
     /// Enable verbose output for detailed logging
     let verbose: Bool
     
+    /// Exact window to record (nil unless --window-id was given)
+    var windowTarget: WindowTarget? = nil
+    
     /// Recording mode based on configuration
     var recordingMode: RecordingMode {
+        if windowTarget != nil {
+            return .window
+        }
         if targetApplication != nil {
             return .application
         } else {
@@ -126,6 +132,7 @@ struct RecordingConfiguration {
 enum RecordingMode {
     case screen
     case application
+    case window
 }
 
 extension RecordingConfiguration {
@@ -168,6 +175,9 @@ extension RecordingConfiguration: CustomStringConvertible {
         
         if let app = targetApplication {
             components.append("Application: \(app.name)")
+        }
+        if let window = windowTarget {
+            components.append("Window: \(window.windowID)")
         }
         
         components.append("Video: \(videoSettings.fps)fps, \(videoSettings.quality.rawValue)")

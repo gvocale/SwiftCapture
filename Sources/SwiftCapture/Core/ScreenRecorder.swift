@@ -476,7 +476,8 @@ class ScreenRecorder {
                 audioSettings: config.audioSettings,
                 videoSettings: config.videoSettings,
                 countdown: config.countdown,
-                verbose: config.verbose
+                verbose: config.verbose,
+                windowTarget: config.windowTarget
             )
         }
         
@@ -489,7 +490,11 @@ class ScreenRecorder {
         // Update video settings with actual resolution
         let actualResolution: CGSize
         
-        if resolvedConfig.recordingMode == .application, let targetApp = resolvedConfig.targetApplication {
+        if resolvedConfig.recordingMode == .window, let target = resolvedConfig.windowTarget {
+            // Exact window: verify it exists and is owned by the expected app, then use its native pixels
+            let window = try await WindowResolver.resolve(target)
+            actualResolution = WindowResolver.pixelSize(of: window)
+        } else if resolvedConfig.recordingMode == .application, let targetApp = resolvedConfig.targetApplication {
             // 🔧 修复：应用录制的分辨率计算
             if let window = targetApp.windows.first {
                 // 获取窗口所在屏幕的缩放因子
@@ -557,6 +562,7 @@ class ScreenRecorder {
             resolution: actualResolution
         )
         
+        let windowTargetForResolved = resolvedConfig.windowTarget
         resolvedConfig = RecordingConfiguration(
             duration: resolvedConfig.duration,
             outputURL: resolvedConfig.outputURL,
@@ -567,7 +573,8 @@ class ScreenRecorder {
             audioSettings: resolvedConfig.audioSettings,
             videoSettings: updatedVideoSettings,
             countdown: resolvedConfig.countdown,
-            verbose: resolvedConfig.verbose
+            verbose: resolvedConfig.verbose,
+            windowTarget: windowTargetForResolved
         )
         
         return resolvedConfig
